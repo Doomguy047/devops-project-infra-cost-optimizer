@@ -1,0 +1,46 @@
+{
+  "ec2_instances": [
+    {
+      "id": "i-001",
+      "cpu_usage": 5,
+      "state": "running",
+      "type": "t3.large"
+    },
+    {
+      "id": "i-002",
+      "cpu_usage": 70,
+      "state": "running",
+      "type": "t3.medium"
+    },
+    {
+      "id": "i-003",
+      "cpu_usage": 0,
+      "state": "stopped",
+      "type": "t3.micro"
+    }
+  ],
+  "ebs_volumes": [
+    {
+      "id": "vol-001",
+      "attached": false,
+      "size_gb": 500
+    },
+    {
+      "id": "vol-002",
+      "attached": true,
+      "size_gb": 100
+    }
+  ],
+  "s3_buckets": [
+    {
+      "name": "logs-bucket",
+      "lifecycle_policy": false,
+      "public": true
+    },
+    {
+      "name": "app-data",
+      "lifecycle_policy": true,
+      "public": false
+    }
+  ]
+}
