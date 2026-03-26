@@ -1,14 +1,578 @@
 def generate_html_report(recommendations):
     with open("cost-report.html", "w") as f:
-        f.write("<html>")
-        f.write("<head><title>Cost Optimization Report</title></head>")
-        f.write("<body>")
-        f.write("<h1>Infrastructure Cost Optimization Report</h1>")
-        f.write("<ul>")
+        f.write("""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Infrastructure Cost Optimizer</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --border: #1e2230;
+    --accent: #00e5ff;
+    --accent2: #ff4d6d;
+    --accent3: #a3e635;
+    --warn: #fbbf24;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --ec2: #3b82f6;
+    --ebs: #f59e0b;
+    --s3: #a855f7;
+  }
 
-        for rec in recommendations:
-            f.write(f"<li>{rec}</li>")
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        f.write("</ul>")
-        f.write("</body>")
-        f.write("</html>")
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 48px;
+    gap: 24px;
+    flex-wrap: wrap;
+    animation: fadeDown 0.6s ease both;
+  }
+
+  .logo-group h1 {
+    font-size: clamp(22px, 4vw, 36px);
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1.1;
+  }
+
+  .logo-group h1 span {
+    color: var(--accent);
+  }
+
+  .logo-group p {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,229,255,0.08);
+    border: 1px solid rgba(0,229,255,0.2);
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+  }
+
+  /* Summary cards */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 40px;
+    animation: fadeUp 0.6s 0.1s ease both;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .stat-card.ec2::after { background: var(--ec2); }
+  .stat-card.ebs::after { background: var(--ebs); }
+  .stat-card.s3::after  { background: var(--s3); }
+  .stat-card.total::after { background: var(--accent2); }
+
+  .stat-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .stat-card.ec2 .stat-value { color: var(--ec2); }
+  .stat-card.ebs .stat-value { color: var(--ebs); }
+  .stat-card.s3  .stat-value { color: var(--s3); }
+  .stat-card.total .stat-value { color: var(--accent2); }
+
+  .stat-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* Section headers */
+  .section-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    margin-top: 36px;
+  }
+
+  .section-head h2 {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+  }
+
+  .section-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .tag-ec2  { background: rgba(59,130,246,0.15); color: var(--ec2); border: 1px solid rgba(59,130,246,0.3); }
+  .tag-ebs  { background: rgba(245,158,11,0.15); color: var(--ebs); border: 1px solid rgba(245,158,11,0.3); }
+  .tag-s3   { background: rgba(168,85,247,0.15);  color: var(--s3);  border: 1px solid rgba(168,85,247,0.3); }
+
+  /* Rec items */
+  .rec-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    animation: fadeUp 0.5s 0.2s ease both;
+  }
+
+  .rec-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    transition: border-color 0.2s, transform 0.2s;
+    cursor: default;
+  }
+
+  .rec-item:hover {
+    border-color: rgba(0,229,255,0.2);
+    transform: translateX(4px);
+  }
+
+  .rec-icon {
+    width: 34px; height: 34px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .icon-ec2  { background: rgba(59,130,246,0.12); }
+  .icon-ebs  { background: rgba(245,158,11,0.12); }
+  .icon-s3   { background: rgba(168,85,247,0.12); }
+
+  .rec-body { flex: 1; }
+
+  .rec-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+
+  .rec-detail {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .sev-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    white-space: nowrap;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+
+  .sev-high   { background: rgba(255,77,109,0.15); color: var(--accent2); border: 1px solid rgba(255,77,109,0.3); }
+  .sev-medium { background: rgba(251,191,36,0.15); color: var(--warn);    border: 1px solid rgba(251,191,36,0.3); }
+  .sev-low    { background: rgba(163,230,53,0.12); color: var(--accent3); border: 1px solid rgba(163,230,53,0.3); }
+
+  /* Infra table */
+  .infra-section {
+    animation: fadeUp 0.5s 0.3s ease both;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+  }
+
+  thead tr {
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    text-align: left;
+    padding: 10px 14px;
+    color: var(--muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+
+  td {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(30,34,48,0.5);
+    color: var(--text);
+  }
+
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .status-dot {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .status-dot::before {
+    content: '';
+    width: 7px; height: 7px;
+    border-radius: 50%;
+  }
+
+  .status-running::before { background: var(--accent3); box-shadow: 0 0 6px var(--accent3); }
+  .status-stopped::before { background: var(--accent2); }
+  .status-attached::before { background: var(--accent3); box-shadow: 0 0 6px var(--accent3); }
+  .status-unattached::before { background: var(--accent2); }
+  .status-ok::before { background: var(--accent3); }
+  .status-warn::before { background: var(--warn); }
+
+  .cpu-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .cpu-track {
+    width: 70px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .cpu-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.8s ease;
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 60px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    animation: fadeUp 0.5s 0.4s ease both;
+  }
+
+  footer span {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* Animations */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo-group">
+      <h1>Infra Cost <span>Optimizer</span></h1>
+      <p>Naman Jain · 23FE10CSE00031 · DevOps</p>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+      <div class="badge">● Analysis Complete</div>
+      <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);" id="ts"></span>
+    </div>
+  </header>
+
+  <!-- Summary -->
+  <div class="summary-grid">
+    <div class="stat-card total">
+      <div class="stat-label">Total Issues</div>
+      <div class="stat-value">5</div>
+      <div class="stat-sub">across all services</div>
+    </div>
+    <div class="stat-card ec2">
+      <div class="stat-label">EC2</div>
+      <div class="stat-value">2</div>
+      <div class="stat-sub">recommendations</div>
+    </div>
+    <div class="stat-card ebs">
+      <div class="stat-label">EBS</div>
+      <div class="stat-value">1</div>
+      <div class="stat-sub">recommendation</div>
+    </div>
+    <div class="stat-card s3">
+      <div class="stat-label">S3</div>
+      <div class="stat-value">2</div>
+      <div class="stat-sub">recommendations</div>
+    </div>
+  </div>
+
+  <!-- EC2 Recommendations -->
+  <div class="section-head">
+    <h2>EC2 Instances</h2>
+    <span class="section-tag tag-ec2">Compute</span>
+  </div>
+  <div class="rec-list">
+    <div class="rec-item">
+      <div class="rec-icon icon-ec2">⚙️</div>
+      <div class="rec-body">
+        <div class="rec-title">i-001 is underutilized</div>
+        <div class="rec-detail">CPU usage at 5% on t3.large · state: running · Consider downsizing to t3.small or t3.micro</div>
+      </div>
+      <span class="sev-badge sev-medium">Medium</span>
+    </div>
+    <div class="rec-item">
+      <div class="rec-icon icon-ec2">⚙️</div>
+      <div class="rec-body">
+        <div class="rec-title">i-003 is stopped</div>
+        <div class="rec-detail">CPU 0% · t3.micro · Stopped instances still incur EBS charges · Consider termination</div>
+      </div>
+      <span class="sev-badge sev-high">High</span>
+    </div>
+  </div>
+
+  <!-- EBS Recommendations -->
+  <div class="section-head" style="margin-top:32px;">
+    <h2>EBS Volumes</h2>
+    <span class="section-tag tag-ebs">Storage</span>
+  </div>
+  <div class="rec-list">
+    <div class="rec-item">
+      <div class="rec-icon icon-ebs">💾</div>
+      <div class="rec-body">
+        <div class="rec-title">vol-001 is unattached</div>
+        <div class="rec-detail">500 GB volume · not attached to any instance · Accruing ~$50/mo · Consider deletion or snapshot</div>
+      </div>
+      <span class="sev-badge sev-high">High</span>
+    </div>
+  </div>
+
+  <!-- S3 Recommendations -->
+  <div class="section-head" style="margin-top:32px;">
+    <h2>S3 Buckets</h2>
+    <span class="section-tag tag-s3">Object Storage</span>
+  </div>
+  <div class="rec-list">
+    <div class="rec-item">
+      <div class="rec-icon icon-s3">🪣</div>
+      <div class="rec-body">
+        <div class="rec-title">logs-bucket — no lifecycle policy</div>
+        <div class="rec-detail">Objects accumulate indefinitely · Set expiration or transition rules to S3-IA / Glacier</div>
+      </div>
+      <span class="sev-badge sev-medium">Medium</span>
+    </div>
+    <div class="rec-item">
+      <div class="rec-icon icon-s3">🪣</div>
+      <div class="rec-body">
+        <div class="rec-title">logs-bucket — public access enabled</div>
+        <div class="rec-detail">Bucket is publicly readable · Security and compliance risk · Review and restrict ACLs</div>
+      </div>
+      <span class="sev-badge sev-high">High</span>
+    </div>
+  </div>
+
+  <!-- Infrastructure Inventory -->
+  <div class="section-head infra-section" style="margin-top:40px;">
+    <h2>Infrastructure Inventory</h2>
+  </div>
+
+  <div class="infra-section">
+    <table>
+      <thead>
+        <tr>
+          <th>Resource ID</th>
+          <th>Type</th>
+          <th>Detail</th>
+          <th>CPU / Size</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>i-001</td>
+          <td><span class="section-tag tag-ec2" style="font-size:10px;">EC2</span></td>
+          <td>t3.large</td>
+          <td>
+            <div class="cpu-bar">
+              <div class="cpu-track"><div class="cpu-fill" style="width:5%;background:var(--warn);"></div></div>
+              5%
+            </div>
+          </td>
+          <td><span class="status-dot status-running">running</span></td>
+        </tr>
+        <tr>
+          <td>i-002</td>
+          <td><span class="section-tag tag-ec2" style="font-size:10px;">EC2</span></td>
+          <td>t3.medium</td>
+          <td>
+            <div class="cpu-bar">
+              <div class="cpu-track"><div class="cpu-fill" style="width:70%;background:var(--accent3);"></div></div>
+              70%
+            </div>
+          </td>
+          <td><span class="status-dot status-running">running</span></td>
+        </tr>
+        <tr>
+          <td>i-003</td>
+          <td><span class="section-tag tag-ec2" style="font-size:10px;">EC2</span></td>
+          <td>t3.micro</td>
+          <td>
+            <div class="cpu-bar">
+              <div class="cpu-track"><div class="cpu-fill" style="width:0%;background:var(--accent2);"></div></div>
+              0%
+            </div>
+          </td>
+          <td><span class="status-dot status-stopped">stopped</span></td>
+        </tr>
+        <tr>
+          <td>vol-001</td>
+          <td><span class="section-tag tag-ebs" style="font-size:10px;">EBS</span></td>
+          <td>General Purpose</td>
+          <td>500 GB</td>
+          <td><span class="status-dot status-unattached">unattached</span></td>
+        </tr>
+        <tr>
+          <td>vol-002</td>
+          <td><span class="section-tag tag-ebs" style="font-size:10px;">EBS</span></td>
+          <td>General Purpose</td>
+          <td>100 GB</td>
+          <td><span class="status-dot status-attached">attached</span></td>
+        </tr>
+        <tr>
+          <td>logs-bucket</td>
+          <td><span class="section-tag tag-s3" style="font-size:10px;">S3</span></td>
+          <td>Object Storage</td>
+          <td>—</td>
+          <td><span class="status-dot status-warn">public · no lifecycle</span></td>
+        </tr>
+        <tr>
+          <td>app-data</td>
+          <td><span class="section-tag tag-s3" style="font-size:10px;">S3</span></td>
+          <td>Object Storage</td>
+          <td>—</td>
+          <td><span class="status-dot status-ok">private · lifecycle set</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer>
+    <span>Infrastructure Cost Optimizer · Naman Jain · 23FE10CSE00031</span>
+    <span id="gen-ts"></span>
+  </footer>
+
+</div>
+
+<script>
+  const now = new Date();
+  const fmt = d => d.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+  document.getElementById('ts').textContent = fmt(now);
+  document.getElementById('gen-ts').textContent = 'Generated: ' + fmt(now);
+</script>
+</body>
+</html>
+""")

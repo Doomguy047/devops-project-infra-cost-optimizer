@@ -1,9 +1,22 @@
 pipeline {
     agent any
+
     stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh 'python3 -m pytest tests/'
+            }
+        }
+
         stage('Build') {
             steps {
-                echo 'Build successful'
+                sh 'docker build -t infra-cost-optimizer .'
             }
         }
     }
